@@ -1,0 +1,101 @@
+﻿@model VisitorViewModel
+@{
+    ViewData["Title"] = "New Visitor";
+}
+<h4 class="text-center py-2 bg-primary text-white">Daily Visitor Entry</h4>
+
+<form asp-action="Create" enctype="multipart/form-data" class="container">
+    <div class="row g-2">
+@*         <div class="col-md-4">
+            <label asp-for="Date"></label>
+            <input asp-for="Date" class="form-control" type="text" readonly />
+        </div> *@
+
+@*         <div class="col-md-4">
+            <label>Gate Entry No</label>
+            <input asp-for="Comp" class="form-control" />
+        </div> *@
+
+        <div class="col-md-4">
+            <label asp-for="Mobile"></label>
+            <input asp-for="Mobile" class="form-control" id="Mobile" />
+            <span asp-validation-for="Mobile" class="text-danger"></span>
+        </div>
+
+
+        <div class="col-12 col-md-6">
+            <label asp-for="VisitorName"></label>
+            <input asp-for="VisitorName" class="form-control" id="VisitorName" />
+        </div>
+
+        <div class="col-12 col-md-6">
+            <label asp-for="CompanyName"></label>
+            <input asp-for="CompanyName" class="form-control" id="CompanyName" />
+        </div>
+
+        <div class="col-12 col-md-6">
+            <label asp-for="VehicleNo"></label>
+            <input asp-for="VehicleNo" class="form-control" id="VehicleNo" />
+        </div>
+
+        <div class="col-md-4">
+            <label>To Meet</label>
+            <input asp-for="ToMeet" class="form-control" />
+        </div>
+
+        <div class="col-md-2">
+            <label asp-for="InTime"></label>
+            <input asp-for="InTime" class="form-control" type="text" readonly />
+        </div>
+
+@*         <div class="col-md-2">
+            <label>Out Time</label>
+            <input asp-for="OutTime" class="form-control" type="time" />
+        </div> *@
+
+        <div class="col-12">
+            <label>Purpose</label>
+            <textarea asp-for="Purpose" class="form-control" rows="3"></textarea>
+        </div>
+
+        <div class="col-12">
+            <label>Remark</label>
+            <textarea asp-for="Remark" class="form-control" rows="2"></textarea>
+        </div>
+
+@*         <div class="col-12 col-md-6">
+            <label>Photo (use camera on mobile)</label>
+            <input asp-for="Photo" class="form-control" type="file" accept="image/*" capture="environment" />
+            <small class="form-text text-muted">Max 2 MB. JPG/PNG only.</small>
+        </div> *@
+
+        <div class="col-12 d-flex gap-2 justify-content-end mt-3">
+            <button type="submit" class="btn btn-success">Save</button>
+            <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+
+    <script>
+        document.getElementById("Mobile").addEventListener("blur", function () {
+            var mobile = this.value;
+            if (mobile.length >= 5) { // basic check
+                fetch('/Visitors/GetVisitorByMobile?mobile=' + mobile)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data) {
+                            document.getElementById("VisitorName").value = data.visitorName || "";
+                            document.getElementById("CompanyName").value = data.companyName || "";
+                            document.getElementById("VehicleNo").value = data.vehicleNo || "";
+                        }
+                    })
+                    .catch(err => console.error(err));
+            }
+        });
+    </script>
+}

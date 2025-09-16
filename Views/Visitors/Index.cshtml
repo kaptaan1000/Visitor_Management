@@ -1,0 +1,97 @@
+﻿@model IEnumerable<Visitor>
+
+@{
+    ViewData["Title"] = "Visitors";
+}
+
+<h2>Visitor List</h2>
+
+<p>
+    <a asp-action="Create" class="btn btn-primary">Add New Visitor</a>
+</p>
+
+<!-- ✅ TABLE: visible on md and larger -->
+<div class="d-none d-md-block">
+    <div class="table-responsive">
+        <table class="table table-striped table-bordered table-hover">
+            <thead class="table-dark">
+                <tr>
+                    <th>Date</th>
+                    <th>Name</th>
+                    <th>Company</th>
+                    <th>Vehicle</th>
+                    <th>To Meet</th>
+                    <th>In Time</th>
+                    <th>Out Time</th>
+                    <th>Mobile</th>
+                    <th>Purpose</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var v in Model)
+                {
+                    <tr>
+                        <td>@(v.Date?.ToString("dd/MM/yyyy") ?? "-")</td>
+                        <td>@v.VisitorName</td>
+                        <td>@v.CompanyName</td>
+                        <td>@v.VehicleNo</td>
+                        <td>@v.ToMeet</td>
+                        <td>@(v.InTime?.ToString("HH:mm") ?? "-")</td>
+                        <td>@(v.OutTime?.ToString("HH:mm") ?? "-")</td>
+                        <td>@v.Mobile</td>
+                        <td>@v.Purpose</td>
+                        <td>
+                            @if (v.OutTime == null)
+                            {
+                                <form asp-action="MarkOut" asp-route-id="@v.Id" method="post" class="d-inline">
+                                    <button type="submit" class="btn btn-sm btn-danger">OUT</button>
+                                </form>
+                            }
+                            else
+                            {
+                                <span class="text-success">Exited</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ✅ CARDS: visible only on small screens -->
+<div class="row row-cols-1 g-3 d-md-none">
+    @foreach (var v in Model)
+    {
+        <div class="col">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">@v.VisitorName</h5>
+                    <p class="card-text">
+                        <strong>Date:</strong> @(v.Date?.ToString("dd/MM/yyyy") ?? "-") <br />
+                        <strong>Mobile:</strong> @v.Mobile <br />
+                        <strong>Company:</strong> @v.CompanyName <br />
+                        <strong>Vehicle:</strong> @v.VehicleNo <br />
+                        <strong>To Meet:</strong> @v.ToMeet <br />
+                        <strong>In Time:</strong> @(v.InTime?.ToString("HH:mm") ?? "-") <br />
+                        <strong>Out Time:</strong> @(v.OutTime?.ToString("HH:mm") ?? "-") <br />
+                        <strong>Purpose:</strong> @v.Purpose
+                    </p>
+                    <div class="d-flex gap-2">
+                        @if (v.OutTime == null)
+                        {
+                            <form asp-action="MarkOut" asp-route-id="@v.Id" method="post" class="d-inline">
+                                <button type="submit" class="btn btn-sm btn-danger">OUT</button>
+                            </form>
+                        }
+                        else
+                        {
+                            <span class="badge bg-success">Exited</span>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
