@@ -95,3 +95,20 @@
         </div>
     }
 </div>
+
+@section Scripts {
+    <script>
+        var lastVisitorId = '@TempData["LastVisitorId"]';
+        if (lastVisitorId) {
+            // Open PDF in new tab
+            var pdfWindow = window.open('/Visitors/Print/' + lastVisitorId, '_blank');
+
+            // Auto trigger print when PDF loads (depends on browser)
+            if (pdfWindow) {
+                pdfWindow.onload = function () {
+                    pdfWindow.print();
+                };
+            }
+        }
+    </script>
+}

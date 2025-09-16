@@ -73,14 +73,7 @@ public class VisitorsController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(VisitorViewModel vm)
     {
-        if (!ModelState.IsValid)
-        {
-            var errors = ModelState.Values.SelectMany(v => v.Errors)
-                                          .Select(e => e.ErrorMessage);
-            Console.WriteLine(string.Join(" | ", errors)); // Or log it
-            return View(vm);
-        }
-
+        if (!ModelState.IsValid) return View(vm);
 
         var visitor = new Visitor
         {
@@ -108,15 +101,11 @@ public class VisitorsController : Controller
         _db.Visitors.Add(visitor);
         await _db.SaveChangesAsync();
 
-        // After save, generate PDF
-        var pdfBytes = GenerateVisitorPdf(visitor);
-
-        // Return PDF as file
-        return File(pdfBytes, "application/pdf", $"VisitorSlip_{visitor.Id}.pdf");
+        // Pass visitor Id to Index
+        TempData["LastVisitorId"] = visitor.Id;
 
         return RedirectToAction(nameof(Index));
     }
-
     private byte[] GenerateVisitorPdf(Visitor visitor)
     {
         return Document.Create(container =>
@@ -163,5 +152,18 @@ public class VisitorsController : Controller
         return View(v);
     }
 
-    // Add Edit/Delete similarly...
+    public IActionResult Print(int id)
+    {
+        var visitor = _db.Visitors.FirstOrDefault(v => v.Id == id);
+        if (visitor == null) return NotFound();
+
+        var pdfBytes = GenerateVisitorPdf(visitor);
+
+        //return File(pdfBytes, "application/pdf", $"VisitorSlip_{visitor.Id}.pdf");
+
+
+        // 👇 This tells browser to preview instead of download
+        return File(pdfBytes, "application/pdf");
+    }
+
 }
