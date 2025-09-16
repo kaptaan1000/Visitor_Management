@@ -108,11 +108,15 @@ public class VisitorsController : Controller
     }
     private byte[] GenerateVisitorPdf(Visitor visitor)
     {
+        // Load logo
+        var logoPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "images", "logo.png");
+        var logoData = System.IO.File.Exists(logoPath) ? System.IO.File.ReadAllBytes(logoPath) : null;
+
         return Document.Create(container =>
         {
             container.Page(page =>
             {
-                page.Size(PageSizes.A6);  // 👈 A6 paper size
+                page.Size(PageSizes.A6);
                 page.Margin(20);
                 page.PageColor(Colors.White);
                 page.DefaultTextStyle(x => x.FontSize(12));
@@ -122,8 +126,17 @@ public class VisitorsController : Controller
                     {
                         col.Spacing(8);
 
-                        col.Item().Text("Visitor Pass")
-                            .FontSize(16).SemiBold().AlignCenter();
+                        // Header row: logo (left) + title (center)
+                        col.Item().Row(row =>
+                        {
+                            if (logoData != null)
+                            {
+                                row.ConstantItem(60).Height(40).Image(logoData).FitArea(); // 👈 safe scaling
+                            }
+
+                            row.RelativeItem().AlignCenter().Text("Visitor Pass")
+                                .FontSize(16).SemiBold();
+                        });
 
                         col.Item().LineHorizontal(1).LineColor(Colors.Grey.Medium);
 
