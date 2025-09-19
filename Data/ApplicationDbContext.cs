@@ -6,6 +6,7 @@ public class ApplicationDbContext : DbContext
 {
     public ApplicationDbContext(DbContextOptions<ApplicationDbContext> opts) : base(opts) { }
     public DbSet<Visitor> Visitors { get; set; }
+    public DbSet<VisitorCard> VisitorCards { get; set; }
 
     protected override void OnModelCreating(ModelBuilder mb)
     {

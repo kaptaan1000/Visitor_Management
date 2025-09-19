@@ -17,11 +17,18 @@
         </div> *@
 
         <div class="col-md-4">
+            <label asp-for="VisitorCardId">Visitor Pass ID</label>
+            <select asp-for="VisitorCardId" asp-items="ViewBag.VisitorCards" class="form-control">
+                <option value="">-- Select Pass ID --</option>
+            </select>
+            <span asp-validation-for="VisitorCardId" class="text-danger"></span>
+        </div>
+
+        <div class="col-md-4">
             <label asp-for="Mobile"></label>
             <input asp-for="Mobile" class="form-control" id="Mobile" />
             <span asp-validation-for="Mobile" class="text-danger"></span>
         </div>
-
 
         <div class="col-12 col-md-6">
             <label asp-for="VisitorName"></label>
@@ -58,10 +65,10 @@
             <textarea asp-for="Purpose" class="form-control" rows="3"></textarea>
         </div>
 
-        <div class="col-12">
+@*         <div class="col-12">
             <label>Remark</label>
             <textarea asp-for="Remark" class="form-control" rows="2"></textarea>
-        </div>
+        </div> *@
 
 @*         <div class="col-12 col-md-6">
             <label>Photo (use camera on mobile)</label>

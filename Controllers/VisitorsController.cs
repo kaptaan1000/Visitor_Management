@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
@@ -9,26 +10,56 @@ public class VisitorsController : Controller
     private readonly ApplicationDbContext _db;
     public VisitorsController(ApplicationDbContext db) { _db = db; }
 
-    public async Task<IActionResult> Index(string q, int page = 1)
+    public async Task<IActionResult> Index(DateTime? date, string status, string q, int page = 1)
     {
-        var today = DateTime.Today; // midnight today
+        // default date is today
+        var filterDate = date ?? DateTime.Today;
 
         var query = _db.Visitors
-                       .Where(v => v.Date.HasValue && v.Date.Value.Date == today); // 👈 only today
+            .Include(v => v.VisitorCard) // include card details
+            .Where(v => v.Date.HasValue && v.Date.Value.Date == filterDate.Date);
 
+        // ✅ search filter
         if (!string.IsNullOrEmpty(q))
         {
-            query = query.Where(v => v.VisitorName.Contains(q) || v.CompanyName.Contains(q));
+            query = query.Where(v =>
+                v.VisitorName.Contains(q) ||
+                v.CompanyName.Contains(q) ||
+                (v.VisitorCard != null && v.VisitorCard.CardNumber.Contains(q)) ||
+                v.Mobile.Contains(q));
+        }
+
+        // ✅ status filter
+        if (!string.IsNullOrEmpty(status))
+        {
+            if (status == "inside")
+                query = query.Where(v => v.OutTime == null);
+            else if (status == "exited")
+                query = query.Where(v => v.OutTime != null);
         }
 
         var list = await query
             .OrderByDescending(v => v.InTime)
             .ToListAsync();
 
+        // pass filters back to view
+        ViewBag.SelectedDate = filterDate.ToString("yyyy-MM-dd");
+        ViewBag.SelectedStatus = status;
+        ViewBag.Query = q;
+
         return View(list);
     }
 
-    public IActionResult Create() => View(new VisitorViewModel { Date = DateTime.Now });
+    public IActionResult Create()
+    {
+        var availableCards = _db.VisitorCards
+            .Where(c => !c.IsAssigned)
+            .ToList();
+
+        ViewBag.VisitorCards = new SelectList(availableCards, "Id", "CardNumber");
+
+        return View(new VisitorViewModel { Date = DateTime.Now });
+    }
 
     [HttpGet]
     public async Task<IActionResult> GetVisitorByMobile(string mobile)
@@ -55,40 +86,58 @@ public class VisitorsController : Controller
     [HttpPost]
     public async Task<IActionResult> MarkOut(int id)
     {
-        var visitor = await _db.Visitors.FindAsync(id);
+        var visitor = await _db.Visitors.Include(v => v.VisitorCard).FirstOrDefaultAsync(v => v.Id == id);
         if (visitor == null) return NotFound();
 
         // Only update if OutTime is still null
         if (!visitor.OutTime.HasValue)
         {
             visitor.OutTime = DateTime.Now;
+
+            if (visitor.VisitorCard != null)
+                visitor.VisitorCard.IsAssigned = false; // make card reusable
+
             await _db.SaveChangesAsync();
         }
 
         return RedirectToAction(nameof(Index));
     }
 
-
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(VisitorViewModel vm)
     {
-        if (!ModelState.IsValid) return View(vm);
+        if (!ModelState.IsValid)
+        {
+            var availableCards = _db.VisitorCards.Where(c => !c.IsAssigned).ToList();
+            ViewBag.VisitorCards = new SelectList(availableCards, "Id", "CardNumber");
+            return View(vm);
+        }
+
+        // ✅ Check if same mobile already has an active visitor
+        bool alreadyInside = await _db.Visitors
+            .AnyAsync(v => v.Mobile == vm.Mobile && v.OutTime == null);
+
+        if (alreadyInside)
+        {
+            ModelState.AddModelError("Mobile", $"Mobile {vm.Mobile} is already inside and not checked out.");
+            var availableCards = _db.VisitorCards.Where(c => !c.IsAssigned).ToList();
+            ViewBag.VisitorCards = new SelectList(availableCards, "Id", "CardNumber");
+            return View(vm);
+        }
 
         var visitor = new Visitor
         {
-            Date = vm.Date,
+            Date = DateTime.Now,
+            InTime = DateTime.Now,
             VisitorName = vm.VisitorName,
             CompanyName = vm.CompanyName,
             VehicleNo = vm.VehicleNo,
             ToMeet = vm.ToMeet,
-            InTime = vm.InTime,
-            OutTime = vm.OutTime,
             Purpose = vm.Purpose,
             Remark = vm.Remark,
             Mobile = vm.Mobile,
-            Comp = vm.Comp,
-            Unit = vm.Unit
+            VisitorCardId = vm.VisitorCardId
         };
 
         if (vm.Photo != null && vm.Photo.Length > 0)
@@ -98,13 +147,32 @@ public class VisitorsController : Controller
             visitor.VsImg = ms.ToArray();
         }
 
-        _db.Visitors.Add(visitor);
-        await _db.SaveChangesAsync();
+        using var transaction = await _db.Database.BeginTransactionAsync();
+        try
+        {
+            _db.Visitors.Add(visitor);
 
-        // Pass visitor Id to Index
-        TempData["LastVisitorId"] = visitor.Id;
+            var card = await _db.VisitorCards.FindAsync(vm.VisitorCardId);
+            if (card == null || card.IsAssigned)
+            {
+                await transaction.RollbackAsync();
+                ModelState.AddModelError("VisitorCardId", "This card is already assigned.");
+                return View(vm);
+            }
 
-        return RedirectToAction(nameof(Index));
+            card.IsAssigned = true;
+
+            await _db.SaveChangesAsync();
+            await transaction.CommitAsync();
+
+            TempData["LastVisitorId"] = visitor.Id;
+            return RedirectToAction(nameof(Index));
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
     }
     private byte[] GenerateVisitorPdf(Visitor visitor)
     {
@@ -140,6 +208,9 @@ public class VisitorsController : Controller
 
                         col.Item().LineHorizontal(1).LineColor(Colors.Grey.Medium);
 
+                        // Show Visitor Pass Card No.
+                        col.Item().Text($"Pass ID: {(visitor.VisitorCard != null ? visitor.VisitorCard.CardNumber : "-")}");
+
                         col.Item().Text($"Date: {visitor.Date:dd/MM/yyyy}");
                         col.Item().Text($"In Time: {visitor.InTime:HH:mm}");
                         col.Item().Text($"Visitor: {visitor.VisitorName}");
@@ -148,7 +219,7 @@ public class VisitorsController : Controller
                         col.Item().Text($"To Meet: {visitor.ToMeet}");
                         col.Item().Text($"Vehicle: {visitor.VehicleNo}");
                         col.Item().Text($"Purpose: {visitor.Purpose}");
-                        col.Item().Text($"Remark: {visitor.Remark}");
+                        //col.Item().Text($"Remark: {visitor.Remark}");
 
                         col.Item().LineHorizontal(1).LineColor(Colors.Grey.Medium);
 
@@ -167,7 +238,10 @@ public class VisitorsController : Controller
 
     public IActionResult Print(int id)
     {
-        var visitor = _db.Visitors.FirstOrDefault(v => v.Id == id);
+        var visitor = _db.Visitors
+            .Include(v => v.VisitorCard)  // 👈 ensures Pass ID is loaded
+            .FirstOrDefault(v => v.Id == id);
+        
         if (visitor == null) return NotFound();
 
         var pdfBytes = GenerateVisitorPdf(visitor);

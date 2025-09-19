@@ -6,6 +6,32 @@
 
 <h2>Visitor List</h2>
 
+<form method="get" class="row g-3 mb-3">
+    <div class="col-md-3">
+        <label>Date</label>
+        <input type="date" name="date" class="form-control" value="@ViewBag.SelectedDate" />
+    </div>
+
+    <div class="col-md-3">
+        <label>Status</label>
+        <select name="status" class="form-select">
+            <option value="">All</option>
+            <option value="inside" selected="@(ViewBag.SelectedStatus == "inside")">Inside</option>
+            <option value="exited" selected="@(ViewBag.SelectedStatus == "exited")">Exited</option>
+        </select>
+    </div>
+
+    <div class="col-md-3">
+        <label>Search</label>
+        <input type="text" name="q" class="form-control" value="@ViewBag.Query" placeholder="Name / Company / Card / Mobile" />
+    </div>
+
+    <div class="col-md-3 d-flex align-items-end">
+        <button type="submit" class="btn btn-primary me-2">Filter</button>
+        <a asp-action="Index" class="btn btn-secondary">Reset</a>
+    </div>
+</form>
+
 <p>
     <a asp-action="Create" class="btn btn-primary">Add New Visitor</a>
 </p>
@@ -16,6 +42,7 @@
         <table class="table table-striped table-bordered table-hover">
             <thead class="table-dark">
                 <tr>
+                    <th>Card No.</th>
                     <th>Date</th>
                     <th>Name</th>
                     <th>Company</th>
@@ -25,13 +52,14 @@
                     <th>Out Time</th>
                     <th>Mobile</th>
                     <th>Purpose</th>
-                    <th>Actions</th>
+                    <th>Status / Action</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach (var v in Model)
                 {
                     <tr>
+                        <td>@(v.VisitorCard?.CardNumber ?? "-")</td>
                         <td>@(v.Date?.ToString("dd/MM/yyyy") ?? "-")</td>
                         <td>@v.VisitorName</td>
                         <td>@v.CompanyName</td>
@@ -44,13 +72,14 @@
                         <td>
                             @if (v.OutTime == null)
                             {
-                                <form asp-action="MarkOut" asp-route-id="@v.Id" method="post" class="d-inline">
+                                <span class="badge bg-warning text-dark">Inside</span>
+                                <form asp-action="MarkOut" asp-route-id="@v.Id" method="post" class="d-inline ms-2">
                                     <button type="submit" class="btn btn-sm btn-danger">OUT</button>
                                 </form>
                             }
                             else
                             {
-                                <span class="text-success">Exited</span>
+                                <span class="badge bg-success">Exited</span>
                             }
                         </td>
                     </tr>
@@ -67,8 +96,20 @@
         <div class="col">
             <div class="card shadow-sm">
                 <div class="card-body">
-                    <h5 class="card-title">@v.VisitorName</h5>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h5 class="card-title">@v.VisitorName</h5>
+                        @if (v.OutTime == null)
+                        {
+                            <span class="badge bg-warning text-dark">Inside</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-success">Exited</span>
+                        }
+                    </div>
+
                     <p class="card-text">
+                        <strong>Card No.:</strong> @(v.VisitorCard?.CardNumber ?? "-") <br />
                         <strong>Date:</strong> @(v.Date?.ToString("dd/MM/yyyy") ?? "-") <br />
                         <strong>Mobile:</strong> @v.Mobile <br />
                         <strong>Company:</strong> @v.CompanyName <br />
@@ -78,18 +119,13 @@
                         <strong>Out Time:</strong> @(v.OutTime?.ToString("HH:mm") ?? "-") <br />
                         <strong>Purpose:</strong> @v.Purpose
                     </p>
-                    <div class="d-flex gap-2">
-                        @if (v.OutTime == null)
-                        {
-                            <form asp-action="MarkOut" asp-route-id="@v.Id" method="post" class="d-inline">
-                                <button type="submit" class="btn btn-sm btn-danger">OUT</button>
-                            </form>
-                        }
-                        else
-                        {
-                            <span class="badge bg-success">Exited</span>
-                        }
-                    </div>
+
+                    @if (v.OutTime == null)
+                    {
+                        <form asp-action="MarkOut" asp-route-id="@v.Id" method="post" class="d-inline">
+                            <button type="submit" class="btn btn-sm btn-danger">OUT</button>
+                        </form>
+                    }
                 </div>
             </div>
         </div>

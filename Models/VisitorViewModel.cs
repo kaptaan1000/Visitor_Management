@@ -53,4 +53,8 @@ public class VisitorViewModel
 
     public string? Comp { get; set; }
     public string? Unit { get; set; }
+
+    [Required(ErrorMessage = "Please select a Visitor Pass ID")]
+    public int VisitorCardId { get; set; }
+
 }
